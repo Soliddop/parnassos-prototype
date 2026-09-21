@@ -31,3 +31,8 @@ shots/
 
 # internal source document (public repo)
 *.docx
+
+# working notes / agent instructions (local only)
+plan.md
+AGENTS.md
+CLAUDE.md
