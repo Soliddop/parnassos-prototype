@@ -1,0 +1,95 @@
+---
+import type { Trail } from "../data/trails";
+
+interface Props { trail: Trail }
+const { trail } = Astro.props;
+---
+
+<article class="card">
+  <a class="card__link" href={`/diadromes/${trail.slug}`}>
+    <div class="card__media">
+      <img src={trail.hero} alt={trail.title} loading="lazy" decoding="async" />
+      <span class="card__badge">Βαθμός {trail.difficulty}</span>
+    </div>
+    <div class="card__body">
+      <h3 class="card__title">{trail.title}</h3>
+      <p class="card__subtitle">{trail.subtitle}</p>
+      <ul class="card__meta">
+        <li>{trail.length}</li>
+        <li>{trail.duration}</li>
+        <li>{trail.highestPoint}</li>
+      </ul>
+      <p class="card__price">{trail.price}</p>
+    </div>
+  </a>
+</article>
+
+<style>
+  .card {
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--c-white);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    height: 100%;
+  }
+
+  .card:hover { box-shadow: var(--shadow-card); transform: translateY(-2px); }
+
+  .card__link { display: flex; flex-direction: column; height: 100%; }
+
+  .card__media { position: relative; }
+
+  .card__media img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+  }
+
+  .card__badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: var(--c-cinnabar);
+    color: var(--c-white);
+    font-size: 0.6875rem;
+    font-weight: 700;
+  }
+
+  .card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px;
+    flex: 1;
+  }
+
+  .card__title { font-size: 1.125rem; font-weight: 700; }
+
+  .card__subtitle {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--c-dove-gray);
+  }
+
+  .card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin: 4px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.75rem;
+    color: var(--c-boulder);
+  }
+
+  .card__price {
+    margin: auto 0 0;
+    padding-top: 10px;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--c-cinnabar);
+  }
+</style>

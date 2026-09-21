@@ -1,0 +1,55 @@
+---
+interface Props { images: string[]; title: string }
+const { images, title } = Astro.props;
+---
+
+{images.length > 0 && (
+  <section class="gallery" aria-label={`Φωτογραφίες — ${title}`}>
+    <h2 class="section-title">Gallery</h2>
+    <ul class="gallery__grid">
+      {images.map((src, i) => (
+        <li class={i === 0 ? "gallery__item gallery__item--lead" : "gallery__item"}>
+          <img src={src} alt={`${title} — φωτογραφία ${i + 1}`} loading="lazy" decoding="async" />
+        </li>
+      ))}
+    </ul>
+  </section>
+)}
+
+<style>
+  .gallery { margin-top: 48px; }
+
+  .gallery__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .gallery__item {
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--c-wild-sand);
+  }
+
+  .gallery__item--lead { grid-column: span 3; }
+
+  .gallery__item img {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+
+  .gallery__item--lead img { aspect-ratio: 16 / 7; }
+
+  .gallery__item img:hover { transform: scale(1.03); }
+
+  @media (max-width: 700px) {
+    .gallery__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .gallery__item--lead { grid-column: span 2; }
+  }
+</style>

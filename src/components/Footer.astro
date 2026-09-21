@@ -1,0 +1,114 @@
+---
+import { CONTACT } from "../data/trails";
+
+const columns = [
+  {
+    title: "Πολιτικές",
+    links: [
+      { label: "Πολιτική GDPR", href: "/politiki-gdpr" },
+      { label: "Πολιτική απορρήτου", href: "/politiki-aporritou" },
+      { label: "Όροι χρήσης / cookies", href: "/oroi-chrisis" },
+      { label: "Προσβασιμότητα", href: "/prosvasimotita" },
+    ],
+  },
+  {
+    title: "Χρήσιμα",
+    links: [
+      { label: "Τρόποι Πληρωμής", href: "/tropoi-pliromis" },
+      { label: "Δελτία Τύπου", href: "/deltia-typou" },
+      { label: "Αναζωογόνηση Τυρόλου", href: "/anazoogonisi-tyrolou" },
+    ],
+  },
+];
+---
+
+<footer class="site-footer">
+  <div class="shell site-footer__inner">
+    <a class="site-footer__logo" href="/" aria-label="Parnassos Hiking Club — Αρχική">
+      <img src="/images/icons/logo.png" alt="Λογότυπο Parnassos Hiking Club" width="160" height="201" />
+    </a>
+
+    {columns.map((col) => (
+      <nav class="site-footer__col" aria-label={col.title}>
+        <h2>{col.title}</h2>
+        <ul>
+          {col.links.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
+        </ul>
+      </nav>
+    ))}
+
+    <div class="site-footer__col">
+      <h2>Επικοινωνία</h2>
+      <p>Διεύθυνση: Λεωφόρος Εθνικής Αντίστασης 5, Αμφίκλεια</p>
+      <p>Τηλέφωνο: <a href={`tel:${CONTACT.phone.replace(/\s/g, "")}`}>{CONTACT.phone}</a></p>
+      <p>Email: <a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a></p>
+    </div>
+
+    <div class="site-footer__col">
+      <h2>Ώρες λειτουργίας</h2>
+      <p>Δευτέρα – Παρασκευή: 17:00–21:00</p>
+      <p>Σάββατο – Κυριακή: 9:00–13:00</p>
+    </div>
+  </div>
+
+  <p class="site-footer__legal">
+    Copyright {new Date().getFullYear()} PARNASSOS HIKING CLUB
+  </p>
+</footer>
+
+<style>
+  .site-footer {
+    background: var(--c-daintree);
+    color: var(--c-white);
+    margin-top: 64px;
+  }
+
+  .site-footer__inner {
+    display: grid;
+    grid-template-columns: auto repeat(4, 1fr);
+    gap: 40px;
+    padding-block: 56px;
+  }
+
+  .site-footer__logo img { width: 72px; height: auto; }
+
+  .site-footer h2 {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--c-white);
+    margin-bottom: 14px;
+  }
+
+  .site-footer ul { margin: 0; padding: 0; list-style: none; }
+  .site-footer li { margin-bottom: 8px; }
+
+  .site-footer p {
+    margin: 0 0 8px;
+    font-size: 0.8125rem;
+    color: rgba(255, 255, 255, 0.82);
+  }
+
+  .site-footer a {
+    font-size: 0.8125rem;
+    color: rgba(255, 255, 255, 0.82);
+  }
+
+  .site-footer a:hover { color: var(--c-cinnabar); }
+
+  .site-footer__legal {
+    margin: 0;
+    padding: 14px;
+    text-align: center;
+    background: var(--c-cinnabar);
+    color: var(--c-white);
+    font-size: 0.75rem;
+  }
+
+  @media (max-width: 1024px) {
+    .site-footer__inner { grid-template-columns: repeat(2, 1fr); gap: 28px; }
+  }
+
+  @media (max-width: 600px) {
+    .site-footer__inner { grid-template-columns: 1fr; }
+  }
+</style>

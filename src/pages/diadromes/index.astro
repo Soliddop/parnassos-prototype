@@ -1,0 +1,65 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import TrailCard from "../../components/TrailCard.astro";
+import { trails } from "../../data/trails";
+---
+
+<BaseLayout
+  title="Διαδρομές — Parnassos Hiking Club"
+  description="Όλες οι πεζοπορικές διαδρομές του Parnassos Hiking Club στον Παρνασσό και την Αμφίκλεια."
+>
+  <div class="shell">
+    <header class="page-head">
+      <nav class="crumbs" aria-label="Διαδρομή πλοήγησης">
+        <a href="/">Αρχική</a> <span aria-hidden="true">/</span>
+        <span aria-current="page">Διαδρομές</span>
+      </nav>
+      <h1>Διαδρομές</h1>
+      <p>
+        {trails.length} πεζοπορικές διαδρομές στον Παρνασσό και γύρω από την Αμφίκλεια,
+        από εύκολους περιπάτους στον παραδοσιακό οικισμό ως την κορυφή της Λιάκουρας.
+      </p>
+    </header>
+
+    <ul class="grid">
+      {trails.map((trail) => (
+        <li><TrailCard trail={trail} /></li>
+      ))}
+    </ul>
+  </div>
+</BaseLayout>
+
+<style>
+  .page-head { padding: 32px 0 28px; max-width: 720px; }
+
+  .crumbs {
+    display: flex;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--c-boulder);
+    margin-bottom: 14px;
+  }
+
+  .crumbs a:hover { color: var(--c-cinnabar); }
+
+  .page-head h1 { font-size: var(--fs-h4); font-weight: 700; }
+
+  .page-head p {
+    margin: 12px 0 0;
+    line-height: 1.75;
+    color: var(--c-dove-gray);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 24px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (max-width: 1280px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 600px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+</style>

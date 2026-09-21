@@ -1,0 +1,927 @@
+---
+import { availability } from "../lib/availability";
+import { dayKey, formatDayFull, formatDayShort, formatMonth, formatPrice, timeKey } from "../lib/availability/dates";
+import type { Trail } from "../data/trails";
+
+interface Props { trail: Trail }
+const { trail } = Astro.props;
+
+const from = new Date();
+const to = new Date(Date.now() + 190 * 24 * 60 * 60 * 1000);
+const departures = (await availability.listDepartures(trail.slug, from, to))
+  .filter((departure) => departure.status === "open");
+const departureMonths = [...new Set(departures.map((departure) => dayKey(departure.startsAt).slice(0, 7)))];
+
+const match = trail.price.match(/^([\d.,]+€|Δωρεάν)\s*\/?\s*(.*)$/);
+const amount = match ? match[1] : trail.price;
+const priceContext = match && match[2] ? match[2].replace(/^άτομο/, "ανά άτομο") : "";
+const visibleCount = 4;
+---
+
+<div class="demo-booking" data-demo-booking>
+  <section class="mobile-summary" data-mobile-summary aria-labelledby="mobile-booking-title">
+    <div class="mobile-summary__copy">
+      <h2 id="mobile-booking-title">Κλείστε θέση στις ΚΟΧΕΣ</h2>
+      <p>{trail.duration} · Δυσκολία {trail.difficulty}</p>
+    </div>
+    <div class="mobile-summary__price">
+      <strong>{amount}</strong>
+      <span>{priceContext || "ανά άτομο"}</span>
+    </div>
+    <button class="btn btn--primary mobile-summary__action" type="button" data-demo-booking-open>
+      Δείτε αναχωρήσεις
+    </button>
+  </section>
+
+  <aside class="desktop-rail" aria-label="Κράτηση διαδρομής">
+    <dialog class="booking-sheet" data-booking-sheet aria-labelledby="demo-booking-title">
+      <form class="booking-form" action="/diadromes/koxes-demo" method="get" data-booking-form>
+        <header class="booking-form__header">
+          <div>
+            <h2 id="demo-booking-title">Κλείστε θέση</h2>
+            <p>Επιλέξτε απευθείας αναχώρηση και ώρα.</p>
+          </div>
+          <button class="booking-form__close" type="button" data-booking-close aria-label="Κλείσιμο επιλογής αναχώρησης">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+          </button>
+        </header>
+
+        <div class="booking-form__price">
+          <strong>{amount}</strong>
+          <span>{priceContext || "ανά άτομο"}</span>
+        </div>
+
+        <p class="demo-note">
+          Οι αναχωρήσεις αυτής της δοκιμαστικής σελίδας είναι ενδεικτικές. Δεν πραγματοποιείται πραγματική κράτηση.
+        </p>
+
+        {departures.length > 0 ? (
+          <fieldset class="departures">
+            <legend>Επόμενες αναχωρήσεις</legend>
+            <ul class="departures__list">
+              {departures.map((departure, index) => {
+                const day = dayKey(departure.startsAt);
+                const time = timeKey(departure.startsAt);
+                const inputId = `demo-departure-${departure.id}`;
+                const seatText = departure.seatsLeft <= 5
+                  ? `Απομένουν ${departure.seatsLeft} ${departure.seatsLeft === 1 ? "θέση" : "θέσεις"}`
+                  : "Διαθέσιμη";
+                return (
+                  <li data-extra-departure={index >= visibleCount ? "" : undefined} hidden={index >= visibleCount}>
+                    <input
+                      class="departure__input"
+                      type="radio"
+                      id={inputId}
+                      name="departure"
+                      value={departure.id}
+                      required
+                      data-day={day}
+                      data-time={time}
+                      data-price={departure.priceCents}
+                      data-child-price={departure.childPriceCents ?? ""}
+                      data-seats={departure.seatsLeft}
+                    />
+                    <label class="departure" for={inputId}>
+                      <span class="departure__marker" aria-hidden="true"></span>
+                      <span class="departure__when">
+                        <strong>{formatDayShort(day)}</strong>
+                        <span>{time}</span>
+                      </span>
+                      <span class="departure__availability">{seatText}</span>
+                      <strong class="departure__price">{formatPrice(departure.priceCents)}</strong>
+                    </label>
+                    <span class="visually-hidden">{formatDayFull(day)}, ώρα {time}</span>
+                  </li>
+                );
+              })}
+            </ul>
+            {departures.length > visibleCount && (
+              <button class="departures__more" type="button" data-open-date-browser aria-expanded="false">
+                Άλλη ημερομηνία
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3m10-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" /></svg>
+              </button>
+            )}
+            {departures.length > visibleCount && (
+              <div class="date-browser" data-date-browser hidden>
+                <div class="date-browser__field">
+                  <label for="demo-departure-month">Μήνας</label>
+                  <select id="demo-departure-month" data-month-picker>
+                    {departureMonths.map((month) => <option value={month}>{formatMonth(month)}</option>)}
+                  </select>
+                </div>
+                <div class="date-browser__field">
+                  <label for="demo-departure-picker">Ημερομηνία και ώρα</label>
+                  <select id="demo-departure-picker" data-departure-picker>
+                    <option value="">Επιλέξτε αναχώρηση</option>
+                    {departureMonths.map((month) => (
+                      <optgroup label={formatMonth(month)} data-month={month}>
+                        {departures
+                          .filter((departure) => dayKey(departure.startsAt).startsWith(month))
+                          .map((departure) => {
+                            const day = dayKey(departure.startsAt);
+                            return (
+                              <option value={departure.id}>
+                                {formatDayFull(day)} · {timeKey(departure.startsAt)}
+                              </option>
+                            );
+                          })}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+                <p>Εμφανίζονται μόνο αναχωρήσεις που μπορούν να κρατηθούν.</p>
+              </div>
+            )}
+            <button class="departures__change" type="button" data-change-departure>
+              Αλλαγή αναχώρησης
+            </button>
+          </fieldset>
+        ) : (
+          <p class="departures__empty">Δεν υπάρχουν προγραμματισμένες αναχωρήσεις.</p>
+        )}
+
+        <div class="selection" data-selection hidden>
+          <fieldset class="party">
+            <legend>Άτομα</legend>
+            <div class="party__row">
+              <span id="demo-adults-label">Ενήλικες</span>
+              <span class="stepper">
+                <button type="button" data-step="-1" data-field="adults" aria-label="Λιγότεροι ενήλικες">−</button>
+                <output data-adults-output aria-labelledby="demo-adults-label">1</output>
+                <button type="button" data-step="1" data-field="adults" aria-label="Περισσότεροι ενήλικες">+</button>
+              </span>
+            </div>
+            <div class="party__row" data-children-row>
+              <span id="demo-children-label">Ανήλικοι</span>
+              <span class="stepper">
+                <button type="button" data-step="-1" data-field="children" aria-label="Λιγότεροι ανήλικοι">−</button>
+                <output data-children-output aria-labelledby="demo-children-label">0</output>
+                <button type="button" data-step="1" data-field="children" aria-label="Περισσότεροι ανήλικοι">+</button>
+              </span>
+            </div>
+          </fieldset>
+
+          <input type="hidden" name="adults" value="1" data-adults-input />
+          <input type="hidden" name="children" value="0" data-children-input />
+
+          <p class="booking-total">
+            <span>Σύνολο</span>
+            <strong data-total>—</strong>
+          </p>
+
+          <div class="booking-form__actions">
+            <button class="btn btn--primary booking-form__submit" type="submit" data-submit>
+              Συνέχεια στην πληρωμή
+            </button>
+            <p>Η πληρωμή δεν ενεργοποιείται σε αυτή τη δοκιμαστική σελίδα.</p>
+          </div>
+        </div>
+
+        <div class="demo-result" data-demo-result role="status" tabindex="-1" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>
+          <div>
+            <h3>Η επιλογή είναι έτοιμη για το καλάθι</h3>
+            <p>Στην τελική έκδοση, το WooCommerce θα επιβεβαιώσει ξανά τη διαθεσιμότητα και την τιμή πριν από την πληρωμή.</p>
+          </div>
+        </div>
+
+        <a class="booking-form__question" href={`mailto:info@parnassoshiking.gr?subject=${encodeURIComponent(trail.title)}`}>
+          Έχετε ερώτηση; Επικοινωνήστε μαζί μας
+        </a>
+      </form>
+    </dialog>
+  </aside>
+
+  <div class="demo-dock" data-demo-dock aria-hidden="true" inert>
+    <div class="shell demo-dock__inner">
+      <div class="demo-dock__summary">
+        <strong data-dock-price>{amount}</strong>
+        <span data-dock-meta>{trail.duration} · Δυσκολία {trail.difficulty}</span>
+      </div>
+      <button class="btn btn--primary demo-dock__action" type="button" data-demo-booking-open data-dock-action>
+        Δείτε αναχωρήσεις
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .demo-booking { container: booking-panel / inline-size; }
+
+  .mobile-summary { display: none; }
+
+  .desktop-rail {
+    position: sticky;
+    top: 24px;
+  }
+
+  .booking-sheet {
+    position: static;
+    display: block;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--c-border);
+    border-radius: 14px;
+    overflow: visible;
+    background: var(--c-white);
+    color: var(--c-shark);
+    box-shadow: var(--shadow-card);
+  }
+
+  .booking-sheet:not([open]) { display: none; }
+
+  .booking-form { padding: 22px; }
+
+  .booking-form__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--c-border);
+  }
+
+  .booking-form__header h2 {
+    font-size: 1.375rem;
+    letter-spacing: -0.02em;
+  }
+
+  .booking-form__header p {
+    margin: 5px 0 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--c-dove-gray);
+  }
+
+  .booking-form__close {
+    display: none;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--c-border);
+    border-radius: 50%;
+    background: var(--c-white);
+    color: var(--c-daintree);
+    cursor: pointer;
+  }
+
+  .booking-form__close svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .booking-form__price {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 16px;
+    color: var(--c-daintree);
+  }
+
+  .booking-form__price strong { font-size: 1.875rem; line-height: 1; }
+  .booking-form__price span { font-size: 0.8125rem; color: var(--c-dove-gray); }
+
+  .demo-note {
+    margin: 14px 0 0;
+    padding: 10px 12px;
+    border-inline-start: 3px solid var(--c-cinnabar);
+    background: #fff7f3;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: #6b3a31;
+  }
+
+  .departures {
+    margin: 20px 0 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .departures legend,
+  .party legend {
+    width: 100%;
+    padding: 0 0 8px;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--c-daintree);
+  }
+
+  .departures__list {
+    position: relative;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .departures__list::before {
+    content: "";
+    position: absolute;
+    inset-block: 18px;
+    inset-inline-start: 10px;
+    width: 1px;
+    background: #efb4a9;
+  }
+
+  .departures__list li { position: relative; }
+  .departures__list li[hidden] { display: none; }
+
+  .departure__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    clip-path: inset(50%);
+    overflow: hidden;
+  }
+
+  .departure {
+    position: relative;
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "marker when price"
+      "marker availability price";
+    align-items: center;
+    column-gap: 10px;
+    min-height: 62px;
+    padding: 8px 8px 8px 0;
+    border-bottom: 1px solid var(--c-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.16s ease;
+  }
+
+  .departure:hover { background: var(--c-wild-sand); }
+
+  .departure__input:focus-visible + .departure {
+    outline: 2px solid var(--c-cinnabar);
+    outline-offset: 2px;
+  }
+
+  .departure__input:checked + .departure { background: #fff3f0; }
+
+  .departure__marker {
+    grid-area: marker;
+    position: relative;
+    z-index: 1;
+    justify-self: center;
+    width: 11px;
+    height: 11px;
+    border: 2px solid var(--c-cinnabar);
+    border-radius: 50%;
+    background: var(--c-white);
+    box-shadow: 0 0 0 4px var(--c-white);
+  }
+
+  .departure__input:checked + .departure .departure__marker {
+    background: var(--c-cinnabar);
+    box-shadow: inset 0 0 0 2px var(--c-white), 0 0 0 4px #fff3f0;
+  }
+
+  .departure__when {
+    grid-area: when;
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    min-width: 0;
+    color: var(--c-daintree);
+  }
+
+  .departure__when strong { font-size: 0.875rem; }
+  .departure__when span { font-size: 0.8125rem; font-weight: 700; }
+
+  .departure__availability {
+    grid-area: availability;
+    font-size: 0.6875rem;
+    color: var(--c-dove-gray);
+  }
+
+  .departure__price {
+    grid-area: price;
+    align-self: center;
+    font-size: 0.875rem;
+    color: var(--c-daintree);
+    white-space: nowrap;
+  }
+
+  .departures__more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    min-height: 44px;
+    margin-top: 8px;
+    padding: 8px;
+    border: 0;
+    background: transparent;
+    color: var(--c-daintree);
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .departures__more:hover { color: var(--c-cinnabar); }
+  .departures__more svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  .date-browser[hidden] { display: none; }
+
+  .date-browser {
+    display: grid;
+    gap: 12px;
+    margin-top: 8px;
+    padding: 14px;
+    border: 1px solid var(--c-border);
+    border-radius: 10px;
+    background: var(--c-wild-sand);
+  }
+
+  .date-browser__field {
+    display: grid;
+    gap: 6px;
+  }
+
+  .date-browser label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--c-daintree);
+  }
+
+  .date-browser select {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 38px 0 12px;
+    border: 1px solid #aeb8bc;
+    border-radius: 8px;
+    background: var(--c-white);
+    color: var(--c-daintree);
+    font: inherit;
+    font-size: 0.875rem;
+  }
+
+  .date-browser p {
+    margin: 0;
+    font-size: 0.6875rem;
+    line-height: 1.45;
+    color: var(--c-dove-gray);
+  }
+
+  .departures__change {
+    display: none;
+    min-height: 44px;
+    margin: 8px 0 0 auto;
+    padding: 8px 0;
+    border: 0;
+    background: transparent;
+    color: var(--c-daintree);
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+
+  .demo-booking.has-selection .departures__list li:not(:has(.departure__input:checked)),
+  .demo-booking.has-selection .departures__more,
+  .demo-booking.has-selection .date-browser { display: none; }
+
+  .demo-booking.has-selection .departures__change { display: block; }
+
+  .selection[hidden],
+  .demo-result[hidden] { display: none; }
+
+  .selection {
+    margin-top: 14px;
+    padding-top: 16px;
+    border-top: 1px solid var(--c-border);
+  }
+
+  .party { margin: 0; padding: 0; border: 0; }
+
+  .party__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 48px;
+    font-size: 0.875rem;
+  }
+
+  .party__row[hidden] { display: none; }
+
+  .stepper {
+    display: inline-grid;
+    grid-template-columns: 44px 34px 44px;
+    align-items: center;
+    text-align: center;
+  }
+
+  .stepper button {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    background: var(--c-white);
+    color: var(--c-daintree);
+    font: inherit;
+    font-size: 1.125rem;
+    cursor: pointer;
+  }
+
+  .stepper button:disabled { opacity: 0.35; cursor: default; }
+  .stepper output { font-weight: 700; color: var(--c-daintree); }
+
+  .booking-total {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 14px 0 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--c-border);
+    color: var(--c-dove-gray);
+  }
+
+  .booking-total strong { font-size: 1.5rem; color: var(--c-daintree); }
+
+  .booking-form__actions { margin-top: 14px; }
+  .booking-form__submit { width: 100%; }
+
+  .booking-form__actions p {
+    margin: 7px 0 0;
+    font-size: 0.6875rem;
+    text-align: center;
+    color: var(--c-boulder);
+  }
+
+  .demo-result {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 14px;
+    border: 1px solid #9bc9b4;
+    border-radius: 10px;
+    background: #f1faf6;
+  }
+
+  .demo-result svg {
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: #12613f;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .demo-result h3 { font-size: 0.9375rem; color: #104e35; }
+  .demo-result p { margin: 4px 0 0; font-size: 0.75rem; line-height: 1.5; color: #37634f; }
+
+  .booking-form__question {
+    display: block;
+    margin-top: 16px;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    color: var(--c-daintree);
+  }
+
+  .booking-form__question:hover { color: var(--c-cinnabar); }
+
+  :where(button, a, input, select):focus-visible {
+    outline: 2px solid var(--c-cinnabar);
+    outline-offset: 2px;
+  }
+
+  .demo-dock { display: none; }
+
+  @media (max-width: 1024px) {
+    .demo-booking { container: none; }
+
+    .mobile-summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px 16px;
+      align-items: center;
+      padding: 22px;
+      border: 1px solid var(--c-border);
+      border-top: 4px solid var(--c-daintree);
+      border-radius: 12px;
+      background: var(--c-white);
+      box-shadow: var(--shadow-card);
+    }
+
+    .mobile-summary__copy h2 { font-size: 1.25rem; }
+    .mobile-summary__copy p { margin: 5px 0 0; font-size: 0.8125rem; color: var(--c-dove-gray); }
+
+    .mobile-summary__price { text-align: end; color: var(--c-daintree); }
+    .mobile-summary__price strong { display: block; font-size: 1.625rem; line-height: 1; }
+    .mobile-summary__price span { display: block; margin-top: 4px; font-size: 0.6875rem; color: var(--c-dove-gray); }
+
+    .mobile-summary__action { grid-column: 1 / -1; width: 100%; }
+
+    .desktop-rail { display: contents; }
+
+    .booking-sheet {
+      position: fixed;
+      inset: auto 0 0 0;
+      width: 100%;
+      max-width: 42rem;
+      max-height: 92dvh;
+      margin: auto auto 0;
+      border: 0;
+      border-radius: 18px 18px 0 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+      box-shadow: 0 -10px 44px rgba(0, 0, 0, 0.24);
+    }
+
+    .booking-sheet::backdrop { background: rgba(0, 28, 42, 0.62); }
+    .booking-form { padding: 20px 20px calc(22px + env(safe-area-inset-bottom, 0px)); }
+    .booking-form__close { display: grid; }
+
+    .demo-dock {
+      position: fixed;
+      inset: auto 0 0 0;
+      z-index: 40;
+      display: block;
+      border-top: 1px solid var(--c-border);
+      background: var(--c-white);
+      box-shadow: 0 -5px 24px rgba(0, 0, 0, 0.12);
+      transform: translateY(115%);
+      transition: transform 0.2s ease;
+    }
+
+    .demo-dock.is-visible { transform: translateY(0); }
+
+    .demo-dock__inner {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      padding-block: 10px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .demo-dock__summary { min-width: 0; }
+    .demo-dock__summary strong { display: block; font-size: 1.125rem; line-height: 1.2; color: var(--c-daintree); }
+    .demo-dock__summary span { display: block; overflow: hidden; margin-top: 2px; font-size: 0.6875rem; color: var(--c-dove-gray); text-overflow: ellipsis; white-space: nowrap; }
+    .demo-dock__action { min-height: 46px; padding-inline: 16px; font-size: 0.875rem; }
+  }
+
+  @media (max-width: 430px) {
+    .mobile-summary { grid-template-columns: minmax(0, 1fr) auto; padding: 18px; }
+    .mobile-summary__copy h2 { font-size: 1.125rem; }
+    .booking-form { padding-inline: 16px; }
+    .departure { grid-template-columns: 22px minmax(0, 1fr) auto; }
+    .departure__when { flex-direction: column; align-items: flex-start; gap: 0; }
+    .demo-dock__action { padding-inline: 13px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .departure,
+    .demo-dock { transition: none; }
+  }
+</style>
+
+<script>
+  const root = document.querySelector<HTMLElement>("[data-demo-booking]");
+
+  if (root) {
+    const sheet = root.querySelector<HTMLDialogElement>("[data-booking-sheet]");
+    const form = root.querySelector<HTMLFormElement>("[data-booking-form]");
+    const desktop = window.matchMedia("(min-width: 1025px)");
+    const dockMedia = window.matchMedia("(max-width: 1024px)");
+    const selection = root.querySelector<HTMLElement>("[data-selection]");
+    const result = root.querySelector<HTMLElement>("[data-demo-result]");
+    const dock = root.querySelector<HTMLElement>("[data-demo-dock]");
+    const dockPrice = root.querySelector<HTMLElement>("[data-dock-price]");
+    const dockMeta = root.querySelector<HTMLElement>("[data-dock-meta]");
+    const dockAction = root.querySelector<HTMLElement>("[data-dock-action]");
+    const adultsOutput = root.querySelector<HTMLOutputElement>("[data-adults-output]");
+    const childrenOutput = root.querySelector<HTMLOutputElement>("[data-children-output]");
+    const adultsInput = root.querySelector<HTMLInputElement>("[data-adults-input]");
+    const childrenInput = root.querySelector<HTMLInputElement>("[data-children-input]");
+    const childrenRow = root.querySelector<HTMLElement>("[data-children-row]");
+    const total = root.querySelector<HTMLElement>("[data-total]");
+    const submit = root.querySelector<HTMLButtonElement>("[data-submit]");
+    const mobileSummary = root.querySelector<HTMLElement>("[data-mobile-summary]");
+    const initialDockPrice = dockPrice?.textContent ?? "";
+    const initialDockMeta = dockMeta?.textContent ?? "";
+    const money = new Intl.NumberFormat("el-GR", { style: "currency", currency: "EUR", minimumFractionDigits: 0 });
+    let adults = 1;
+    let children = 0;
+
+    const selectedDeparture = () =>
+      form?.querySelector<HTMLInputElement>('input[name="departure"]:checked') ?? null;
+
+    const setDockVisible = (visible: boolean) => {
+      if (!dock) return;
+      const show = visible && dockMedia.matches && !sheet?.open;
+      dock.classList.toggle("is-visible", show);
+      dock.setAttribute("aria-hidden", String(!show));
+      if (show) dock.removeAttribute("inert");
+      else dock.setAttribute("inert", "");
+      document.documentElement.classList.toggle("has-demo-dock", show);
+    };
+
+    const syncDock = () => {
+      if (!mobileSummary) return;
+      setDockVisible(mobileSummary.getBoundingClientRect().bottom < 0);
+    };
+
+    const draw = () => {
+      const departure = selectedDeparture();
+      if (!departure) {
+        root.classList.remove("has-selection");
+        if (selection) selection.hidden = true;
+        if (result) result.hidden = true;
+        if (dockPrice) dockPrice.textContent = initialDockPrice;
+        if (dockMeta) dockMeta.textContent = initialDockMeta;
+        if (dockAction) dockAction.textContent = "Δείτε αναχωρήσεις";
+        return;
+      }
+
+      const seats = Number(departure.dataset.seats || 1);
+      const adultPrice = Number(departure.dataset.price || 0);
+      const childPriceValue = departure.dataset.childPrice;
+      const hasChildPrice = childPriceValue !== undefined && childPriceValue !== "";
+      const childPrice = hasChildPrice ? Number(childPriceValue) : 0;
+      adults = Math.max(1, Math.min(adults, seats));
+      children = hasChildPrice ? Math.max(0, Math.min(children, seats - adults)) : 0;
+      const cents = adults * adultPrice + children * childPrice;
+      const formattedTotal = money.format(cents / 100);
+
+      departure.closest<HTMLElement>("li")?.removeAttribute("hidden");
+      root.classList.add("has-selection");
+      if (selection) selection.hidden = false;
+      if (result) result.hidden = true;
+      if (childrenRow) childrenRow.hidden = !hasChildPrice;
+      if (adultsOutput) adultsOutput.textContent = String(adults);
+      if (childrenOutput) childrenOutput.textContent = String(children);
+      if (adultsInput) adultsInput.value = String(adults);
+      if (childrenInput) childrenInput.value = String(children);
+      if (total) total.textContent = formattedTotal;
+      if (submit) submit.textContent = `Συνέχεια στην πληρωμή · ${formattedTotal}`;
+
+      root.querySelectorAll<HTMLButtonElement>("[data-step]").forEach((button) => {
+        const field = button.dataset.field;
+        const delta = Number(button.dataset.step);
+        const current = field === "adults" ? adults : children;
+        const minimum = field === "adults" ? 1 : 0;
+        button.disabled = (delta < 0 && current <= minimum) || (delta > 0 && adults + children >= seats);
+      });
+
+      if (dockPrice) dockPrice.textContent = formattedTotal;
+      if (dockMeta) dockMeta.textContent = `${departure.dataset.dayLabel ?? departure.dataset.day} · ${departure.dataset.time}`;
+      if (dockAction) dockAction.textContent = "Ολοκλήρωση";
+    };
+
+    root.querySelectorAll<HTMLInputElement>('input[name="departure"]').forEach((input) => {
+      input.dataset.dayLabel = input.dataset.day
+        ? new Intl.DateTimeFormat("el-GR", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })
+            .format(new Date(`${input.dataset.day}T00:00:00Z`))
+        : "";
+      input.addEventListener("change", draw);
+    });
+
+    root.querySelectorAll<HTMLButtonElement>("[data-step]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const delta = Number(button.dataset.step);
+        if (button.dataset.field === "adults") adults += delta;
+        else children += delta;
+        draw();
+      });
+    });
+
+    const dateBrowserButton = root.querySelector<HTMLButtonElement>("[data-open-date-browser]");
+    const dateBrowser = root.querySelector<HTMLElement>("[data-date-browser]");
+    const monthPicker = root.querySelector<HTMLSelectElement>("[data-month-picker]");
+    const departurePicker = root.querySelector<HTMLSelectElement>("[data-departure-picker]");
+
+    const filterDeparturePicker = () => {
+      if (!monthPicker || !departurePicker) return;
+      departurePicker.value = "";
+      departurePicker.querySelectorAll<HTMLOptGroupElement>("optgroup").forEach((group) => {
+        const visible = group.dataset.month === monthPicker.value;
+        group.hidden = !visible;
+        group.disabled = !visible;
+      });
+    };
+
+    dateBrowserButton?.addEventListener("click", () => {
+      if (!dateBrowser) return;
+      const opening = dateBrowser.hidden;
+      dateBrowser.hidden = !opening;
+      dateBrowserButton.setAttribute("aria-expanded", String(opening));
+      if (opening) monthPicker?.focus();
+    });
+
+    monthPicker?.addEventListener("change", filterDeparturePicker);
+    departurePicker?.addEventListener("change", () => {
+      const chosen = [...root.querySelectorAll<HTMLInputElement>('input[name="departure"]')]
+        .find((input) => input.value === departurePicker.value);
+      if (!chosen) return;
+      chosen.checked = true;
+      chosen.dispatchEvent(new Event("change", { bubbles: true }));
+      if (dateBrowser) dateBrowser.hidden = true;
+      dateBrowserButton?.setAttribute("aria-expanded", "false");
+      chosen.focus();
+    });
+
+    filterDeparturePicker();
+
+    root.querySelector<HTMLButtonElement>("[data-change-departure]")?.addEventListener("click", () => {
+      root.classList.remove("has-selection");
+      if (selection) selection.hidden = true;
+      if (result) result.hidden = true;
+      selectedDeparture()?.focus();
+    });
+
+    const openBooking = () => {
+      if (!sheet) return;
+      if (desktop.matches) {
+        root.scrollIntoView({ behavior: "smooth", block: "start" });
+        (selectedDeparture() ?? form?.querySelector<HTMLInputElement>('input[name="departure"]'))?.focus();
+        return;
+      }
+      if (!sheet.open) sheet.showModal();
+      setDockVisible(false);
+    };
+
+    const closeBooking = () => {
+      if (sheet?.open && !desktop.matches) sheet.close();
+    };
+
+    document.querySelectorAll<HTMLElement>("[data-demo-booking-open]").forEach((button) => {
+      button.addEventListener("click", openBooking);
+    });
+    root.querySelector<HTMLElement>("[data-booking-close]")?.addEventListener("click", closeBooking);
+    sheet?.addEventListener("click", (event) => {
+      if (event.target === sheet) closeBooking();
+    });
+    sheet?.addEventListener("close", syncDock);
+
+    const applyMode = () => {
+      if (!sheet) return;
+      if (desktop.matches) {
+        if (sheet.open) sheet.close();
+        sheet.setAttribute("open", "");
+        setDockVisible(false);
+      } else if (sheet.open) {
+        sheet.close();
+      }
+    };
+
+    desktop.addEventListener("change", applyMode);
+    dockMedia.addEventListener("change", syncDock);
+    applyMode();
+
+    if (mobileSummary) {
+      new IntersectionObserver((entries) => {
+        const entry = entries.at(-1);
+        if (!entry) return;
+        setDockVisible(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+      }, { threshold: 0 }).observe(mobileSummary);
+    }
+
+    form?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!selectedDeparture()) {
+        form.reportValidity();
+        return;
+      }
+      if (result) {
+        result.hidden = false;
+        result.focus();
+        result.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    });
+
+    draw();
+  }
+</script>
+
+<style is:global>
+  @media (max-width: 1024px) {
+    html.has-demo-dock body { padding-bottom: 76px; }
+  }
+</style>

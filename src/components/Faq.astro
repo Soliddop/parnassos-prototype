@@ -1,0 +1,99 @@
+---
+import type { Trail } from "../data/trails";
+
+interface Props { trail: Trail }
+const { trail } = Astro.props;
+
+// Answers are built only from facts stated in the route data.
+const items = [
+  {
+    q: "Είμαι αρχάριος στην πεζοπορία. Μπορώ να συμμετάσχω;",
+    a: trail.requirements.join(" · "),
+  },
+  {
+    q: "Τι εξοπλισμό να πάρω μαζί μου;",
+    a: "Δείτε τη στήλη «Εξοπλισμός & Απαιτήσεις» πιο πάνω. Απαραίτητα είναι κατάλληλα παπούτσια πεζοπορίας, νερό και αντηλιακή προστασία.",
+  },
+  {
+    q: "Τι περιλαμβάνει η τιμή;",
+    a: trail.includes.join(" · "),
+  },
+  {
+    q: "Πόσο διαρκεί η διαδρομή;",
+    a: `Η διάρκεια είναι ${trail.duration} και το μήκος ${trail.length}.`,
+  },
+  {
+    q: "Πότε μπορώ να κάνω αυτή τη διαδρομή;",
+    a: `Περίοδος υλοποίησης: ${trail.season}.`,
+  },
+  {
+    q: "Πώς κάνω κράτηση;",
+    a: "Επικοινωνήστε μαζί μας τηλεφωνικά ή με email, ή συμπληρώστε τη φόρμα εκδήλωσης ενδιαφέροντος από το κουμπί «Κάντε κράτηση».",
+  },
+];
+---
+
+<section class="faq" aria-label="Συχνές ερωτήσεις">
+  <h2 class="section-title">Συχνές Ερωτήσεις</h2>
+  <div class="faq__list">
+    {items.map((item, i) => (
+      <details class="faq__item" name="trail-faq" open={i === 0}>
+        <summary>
+          <span>{item.q}</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+        </summary>
+        <p>{item.a}</p>
+      </details>
+    ))}
+  </div>
+</section>
+
+<style>
+  .faq { margin-top: 48px; }
+
+  .faq__list { display: flex; flex-direction: column; gap: 10px; }
+
+  .faq__item {
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    background: var(--c-white);
+    overflow: hidden;
+  }
+
+  .faq__item summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 20px;
+    cursor: pointer;
+    font-size: 0.9375rem;
+    color: var(--c-shark);
+    list-style: none;
+  }
+
+  .faq__item summary::-webkit-details-marker { display: none; }
+
+  .faq__item summary svg {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: var(--c-dove-gray);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.2s ease;
+  }
+
+  .faq__item[open] summary svg { transform: rotate(180deg); }
+  .faq__item[open] summary { color: var(--c-daintree); font-weight: 600; }
+
+  .faq__item p {
+    margin: 0;
+    padding: 0 20px 18px;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    color: var(--c-dove-gray);
+  }
+</style>

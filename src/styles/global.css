@@ -1,0 +1,533 @@
+/* Design tokens from the PARNASSOS-HIKING Figma file. */
+:root {
+  --c-daintree: #002a3f;
+  --c-elephant: #0c2e40;
+  --c-cinnabar: #e8412c;
+  --c-shark: #222529;
+  --c-cod-gray: #0a0a0a;
+  --c-dove-gray: #666666;
+  --c-boulder: #777777;
+  --c-wild-sand: #f5f5f5;
+  --c-westar: #e5e3df;
+  --c-white: #ffffff;
+  --c-border: #e6e8eb;
+
+  --font-body: "Open Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --fs-h2: 3.375rem;
+  --fs-h4: 2.369rem;
+  --fs-h5: 1.777rem;
+  --fs-h6: 1.333rem;
+  --fs-p: 1rem;
+  --fs-small: 0.75rem;
+
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shell: 1600px;
+  --gutter: 24px;
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--fs-p);
+  line-height: 1.6;
+  color: var(--c-shark);
+  background: var(--c-white);
+  -webkit-font-smoothing: antialiased;
+}
+
+img { max-width: 100%; display: block; }
+a { color: inherit; text-decoration: none; }
+
+h1, h2, h3, h4, h5, h6 { margin: 0; line-height: 1.15; color: var(--c-daintree); }
+
+.shell {
+  width: 100%;
+  max-width: var(--shell);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.section-title {
+  font-size: var(--fs-h6);
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  /* min-height, not height: a label that wraps to two lines (the narrow
+     sidebar wraps "Ρωτήστε μας για την διαδρομή") must grow the button
+     instead of spilling out of it. */
+  min-height: 48px;
+  padding-block: 12px;
+  padding-inline: 24px;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  line-height: 1.3;
+  text-align: center;
+  text-wrap: balance;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.btn--primary { background: var(--c-cinnabar); color: var(--c-white); }
+.btn--primary:hover { background: #cf3523; }
+
+.btn--ghost {
+  background: var(--c-white);
+  color: var(--c-shark);
+  border-color: var(--c-border);
+  font-weight: 600;
+}
+.btn--ghost:hover { border-color: var(--c-cinnabar); color: var(--c-cinnabar); }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1024px) {
+  :root { --fs-h2: 2.25rem; --fs-h4: 1.75rem; --fs-h5: 1.375rem; }
+}
+
+/* ---------------------------------------------------------------------------
+   Booking calendar.
+
+   These live in global.css rather than in the component, because the month
+   grid is injected as raw HTML — server-side with `set:html`, client-side with
+   `innerHTML` — and Astro's scoped-style attributes never reach that markup.
+   --------------------------------------------------------------------------- */
+
+.cal { margin-bottom: 14px; }
+
+.cal__title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--c-daintree);
+}
+
+.cal__empty {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--c-dove-gray);
+}
+
+/* ---- trigger: opens the sheet on mobile, the flyout on desktop ---- */
+
+.cal__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  background: #f9fafb;
+  /* Was #717171 on #f9fafb — about 4.3:1, below the 4.5:1 WCAG AA floor for
+     normal text. --c-dove-gray (#666) clears it. */
+  color: var(--c-dove-gray);
+  font: inherit;
+  font-size: 1rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Only the chosen date is held to one line — it is short by construction
+   (formatDayCompact). The default prompt is longer than the narrowest card and
+   must stay free to wrap, or it gets clipped on a 320px phone. */
+.cal__trigger.is-chosen { white-space: nowrap; overflow: hidden; }
+.cal__trigger.is-chosen > span { overflow: hidden; text-overflow: ellipsis; }
+
+.cal__trigger:hover { border-color: var(--c-daintree); }
+
+.cal__trigger:focus-visible {
+  outline: 2px solid var(--c-cinnabar);
+  outline-offset: 2px;
+}
+
+.cal__trigger.is-chosen { color: var(--c-daintree); font-weight: 700; }
+
+.cal__chevron { flex: 0 0 auto; width: 20px; height: 20px; fill: currentColor; }
+
+/* ---- sheet: flyout on desktop, modal bottom sheet on mobile ---- */
+
+.cal__sheet {
+  display: block;
+  position: static;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  background: var(--c-white);
+  color: inherit;
+  overflow: visible;
+}
+
+/* Two open states to allow for: the mobile sheet is a modal <dialog> and has
+   [open]; the desktop flyout is the same element shown as a popover, which
+   reports :popover-open and never sets [open]. */
+.cal__sheet:not([open]):not(:popover-open) { display: none; }
+
+.cal__sheet-inner { padding: 12px; }
+
+.cal__close { display: none; }
+
+.cal__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.cal__month {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--c-daintree);
+  text-transform: capitalize;
+}
+
+.cal__arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  background: var(--c-white);
+  color: var(--c-daintree);
+  cursor: pointer;
+}
+
+.cal__arrow svg { width: 20px; height: 20px; }
+.cal__arrow:hover:not(:disabled) { border-color: var(--c-daintree); }
+.cal__arrow:focus-visible { outline: 2px solid var(--c-cinnabar); outline-offset: 2px; }
+.cal__arrow:disabled { opacity: 0.35; cursor: default; }
+
+/* ---- month grid ---- */
+
+.cal__grid {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.cal__grid th {
+  padding: 6px 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--c-dove-gray);
+  text-transform: uppercase;
+}
+
+.cal__grid td { padding: 1px; text-align: center; }
+
+.cal__day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  /* 44px keeps the touch target at the WCAG minimum on the narrowest phone. */
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--c-shark);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.cal__day:disabled { cursor: default; }
+
+/* A day with no departure is present so the grid keeps its shape, but it is
+   natively disabled: not focusable, not clickable, and clearly inert. */
+.cal__day:disabled:not(.is-soldout) { color: #b9bfc5; }
+
+.cal__day.is-open:hover { border-color: var(--c-daintree); }
+.cal__day:focus-visible { outline: 2px solid var(--c-cinnabar); outline-offset: 1px; }
+
+.cal__day.is-open { font-weight: 700; color: var(--c-daintree); }
+
+.cal__day[aria-pressed="true"] {
+  background: var(--c-cinnabar);
+  border-color: var(--c-cinnabar);
+  color: var(--c-white);
+}
+
+.cal__dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--c-cinnabar);
+}
+
+.cal__day[aria-pressed="true"] .cal__dot { background: var(--c-white); }
+
+/* Sold-out days stay in the grid. Hiding them would read as "the trail does
+   not run"; showing them reads as "book earlier next time". */
+.cal__day.is-soldout { color: var(--c-boulder); }
+.cal__day.is-soldout .cal__num { text-decoration: line-through; }
+.cal__day.is-soldout .cal__dot { background: var(--c-westar); }
+
+.cal__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 10px 0 0;
+  font-size: 0.6875rem;
+  color: var(--c-dove-gray);
+}
+
+.cal__legend-item { display: inline-flex; align-items: center; gap: 5px; }
+
+.cal__legend-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--c-cinnabar);
+}
+
+.cal__legend-strike { text-decoration: line-through; }
+
+/* ---- departures for the picked day ---- */
+
+.cal__deps[hidden] { display: none; }
+
+.deps { margin: 10px 0 0; padding: 0; border: 0; }
+
+.deps__legend {
+  padding: 0 0 6px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--c-daintree);
+}
+
+.dep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  margin-bottom: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.dep:hover { border-color: var(--c-daintree); }
+.dep:has(input:focus-visible) { outline: 2px solid var(--c-cinnabar); outline-offset: 2px; }
+.dep:has(input:checked) { border-color: var(--c-cinnabar); background: rgba(232, 65, 44, 0.06); }
+
+.dep--soldout { cursor: default; opacity: 0.6; }
+.dep--soldout .dep__time { text-decoration: line-through; }
+
+.dep input { flex: 0 0 auto; accent-color: var(--c-cinnabar); width: 18px; height: 18px; }
+
+.dep__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+  min-width: 0;
+  flex: 1;
+}
+.dep__time { font-size: 0.9375rem; font-weight: 700; color: var(--c-daintree); }
+.dep__seats { font-size: 0.75rem; color: var(--c-dove-gray); }
+.dep__body > .dep__seats::before { content: "· "; }
+.dep__price { flex: 0 0 auto; font-size: 0.9375rem; font-weight: 700; color: var(--c-daintree); }
+
+/* ---- party size ---- */
+
+.party { margin: 10px 0 0; padding: 0; border: 0; }
+.party[disabled] { opacity: 0.5; }
+
+.party__legend {
+  padding: 0 0 6px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--c-daintree);
+}
+
+.party__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 2px;
+}
+
+.party__row[hidden] { display: none; }
+
+.party__label { font-size: 0.875rem; color: var(--c-shark); }
+
+.party__stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.party__stepper button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  background: var(--c-white);
+  color: var(--c-daintree);
+  font: inherit;
+  font-size: 1.125rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.party__stepper button:hover:not(:disabled) { border-color: var(--c-daintree); }
+.party__stepper button:focus-visible { outline: 2px solid var(--c-cinnabar); outline-offset: 2px; }
+.party__stepper button:disabled { opacity: 0.35; cursor: default; }
+
+.party__stepper output {
+  min-width: 32px;
+  text-align: center;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--c-daintree);
+}
+
+.cal__total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--c-border);
+  font-size: 0.875rem;
+  color: var(--c-dove-gray);
+}
+
+.cal__total[hidden] { display: none; }
+.cal__total strong { font-size: 1.25rem; color: var(--c-daintree); }
+
+/* ---- no-JS fallback ---- */
+
+.cal__nojs-title { margin: 14px 0 6px; font-size: 0.8125rem; font-weight: 700; }
+.cal__nojs { margin: 0; padding-left: 18px; font-size: 0.8125rem; line-height: 1.7; }
+.cal__nojs a { text-decoration: underline; }
+
+/* ---- desktop flyout ----
+   The sidebar card is short on vertical room, so the month grid is not inline.
+   It opens as a popover, which puts it in the top layer: the card is sticky
+   with `overflow-y: auto`, and anything positioned inside it would be clipped.
+   JS sets top/left from the trigger's box; the rest is fixed here. */
+
+@media (min-width: 1025px) {
+  .cal__sheet:popover-open {
+    position: fixed;
+    inset: auto;
+    width: 320px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    overscroll-behavior: contain;
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+    animation: cal-flyout-in 0.14s ease;
+  }
+
+  .cal__sheet::backdrop { background: transparent; }
+
+  .cal__sheet-inner { padding: 14px; }
+}
+
+@keyframes cal-flyout-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- below 1025px the card is full-width, so the grid moves into a sheet ---- */
+
+@media (max-width: 1024px) {
+  .cal__sheet {
+    position: fixed;
+    inset: auto 0 0 0;
+    width: 100%;
+    max-height: 88vh;
+    border: 0;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.25);
+    overflow: auto;
+    animation: cal-sheet-up 0.22s ease;
+  }
+
+  .cal__sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
+
+  .cal__sheet-inner { padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+
+  .cal__close {
+    display: block;
+    width: 100%;
+    height: 48px;
+    margin-top: 12px;
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    background: var(--c-white);
+    color: var(--c-shark);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .cal__day { min-height: 48px; }
+}
+
+@keyframes cal-sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cal__sheet,
+  .cal__sheet:popover-open { animation: none; }
+}
+
+/* A CTA that is not ready yet. It keeps its href and stays focusable, so a
+   keyboard user can reach it and hear the aria-describedby hint instead of
+   meeting a silently dead button; the click is blocked in JS. */
+.btn.is-disabled,
+.btn.is-disabled:hover {
+  background: var(--c-westar);
+  border-color: var(--c-westar);
+  color: var(--c-dove-gray);
+  cursor: not-allowed;
+}

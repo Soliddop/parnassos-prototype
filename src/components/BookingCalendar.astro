@@ -1,0 +1,123 @@
+---
+/**
+ * Departure calendar for the booking sidebar.
+ *
+ * Flyout on desktop, bottom sheet below 1025px. Both are the same <dialog>:
+ * on desktop it is shown as a popover anchored under the trigger, on mobile
+ * `showModal()` gives the focus trap, Esc-to-close and focus return. That
+ * keeps one grid in the DOM instead of two that can disagree. The desktop
+ * flyout exists because the sidebar card has little vertical room; an inline
+ * grid pushed the booking button below the fold.
+ *
+ * The departures are baked into the page as JSON at build time, so the static
+ * site makes no request. Phase 5 fills the same payload from WooCommerce
+ * through the same adapter, and this file does not change.
+ */
+import { availability } from "../lib/availability";
+import { renderMonth, toPayload } from "../lib/booking/grid";
+import { formatDayFull, formatMonth, formatPrice } from "../lib/availability/dates";
+import { buildEnquiryUrl } from "../lib/availability/checkout";
+import type { Trail } from "../data/trails";
+
+interface Props { trail: Trail }
+const { trail } = Astro.props;
+
+const from = new Date();
+const to = new Date(Date.now() + 190 * 24 * 60 * 60 * 1000);
+const payload = toPayload(trail.slug, await availability.listDepartures(trail.slug, from, to));
+
+const hasDepartures = payload.departures.length > 0;
+
+// Render the opening month server-side so the grid is there on first paint.
+// The client re-renders later months with the same function.
+const initialGrid = hasDepartures
+  ? renderMonth(payload.initialMonth, payload.departures.filter((d) => d.day.startsWith(payload.initialMonth)), null, null)
+  : "";
+
+// <noscript> fallback: the next six departures as plain links, so the page is
+// still bookable with scripting off.
+const fallback = payload.departures.filter((d) => d.status === "open").slice(0, 6);
+const sheetId = `cal-sheet-${trail.slug}`;
+---
+
+{hasDepartures ? (
+  <div class="cal">
+    <script type="application/json" data-cal-payload set:html={JSON.stringify(payload)} />
+
+    <h2 class="cal__title" id={`cal-title-${trail.slug}`}>Επιλέξτε ημερομηνία</h2>
+
+    <button type="button" class="cal__trigger" data-cal-trigger aria-haspopup="dialog" aria-expanded="false" aria-controls={sheetId}>
+      <span data-cal-trigger-label>Δείτε τις διαθέσιμες ημερομηνίες</span>
+      <svg class="cal__chevron" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M7 3h2v2h6V3h2v2h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h3V3Zm13 7H4v9h16v-9Z"/>
+      </svg>
+    </button>
+
+    <dialog class="cal__sheet" id={sheetId} data-cal-sheet aria-labelledby={`cal-title-${trail.slug}`}>
+      <div class="cal__sheet-inner">
+        <div class="cal__nav">
+          <button type="button" class="cal__arrow" data-cal-prev aria-label="Προηγούμενος μήνας">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <p class="cal__month" data-cal-month>{formatMonth(payload.initialMonth)}</p>
+          <button type="button" class="cal__arrow" data-cal-next aria-label="Επόμενος μήνας">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+
+        <div class="cal__grid-wrap" data-cal-grid set:html={initialGrid} />
+
+        <p class="cal__legend">
+          <span class="cal__legend-item"><span class="cal__legend-dot" aria-hidden="true"></span>Διαθέσιμη αναχώρηση</span>
+          <span class="cal__legend-item"><span class="cal__legend-strike" aria-hidden="true">15</span>Εξαντλήθηκε</span>
+        </p>
+
+        <button type="button" class="cal__close" data-cal-close>Κλείσιμο</button>
+      </div>
+    </dialog>
+
+    <p class="visually-hidden" role="status" aria-live="polite" data-cal-live></p>
+
+    <div class="cal__deps" data-cal-deps hidden></div>
+
+    <fieldset class="party" data-cal-party disabled>
+      <legend class="party__legend">Άτομα</legend>
+      <div class="party__row">
+        <span class="party__label" id={`adults-${trail.slug}`}>Ενήλικες</span>
+        <span class="party__stepper">
+          <button type="button" data-step="-1" data-field="adults" aria-label="Λιγότεροι ενήλικες">−</button>
+          <output data-cal-adults-value aria-labelledby={`adults-${trail.slug}`}>1</output>
+          <button type="button" data-step="1" data-field="adults" aria-label="Περισσότεροι ενήλικες">+</button>
+        </span>
+      </div>
+      <div class="party__row" data-cal-children-row>
+        <span class="party__label" id={`children-${trail.slug}`}>Ανήλικοι</span>
+        <span class="party__stepper">
+          <button type="button" data-step="-1" data-field="children" aria-label="Λιγότεροι ανήλικοι">−</button>
+          <output data-cal-children-value aria-labelledby={`children-${trail.slug}`}>0</output>
+          <button type="button" data-step="1" data-field="children" aria-label="Περισσότεροι ανήλικοι">+</button>
+        </span>
+      </div>
+    </fieldset>
+
+    <p class="cal__total" data-cal-total hidden></p>
+
+    <noscript>
+      <p class="cal__nojs-title">Επόμενες αναχωρήσεις</p>
+      <ul class="cal__nojs">
+        {fallback.map((d) => (
+          <li>
+            <a href={buildEnquiryUrl({ departureId: d.id, trailSlug: trail.slug, day: d.day, adults: 1, children: 0 })}>
+              {formatDayFull(d.day)} — {d.time} — {formatPrice(d.priceCents)}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </noscript>
+  </div>
+) : (
+  <div class="cal cal--empty">
+    <h2 class="cal__title">Αναχωρήσεις</h2>
+    <p class="cal__empty">Δεν υπάρχουν προγραμματισμένες αναχωρήσεις για αυτή τη διαδρομή.</p>
+  </div>
+)}

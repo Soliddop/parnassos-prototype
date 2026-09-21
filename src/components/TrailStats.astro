@@ -1,0 +1,84 @@
+---
+import type { Trail } from "../data/trails";
+
+interface Props { trail: Trail }
+const { trail } = Astro.props;
+
+const stats = [
+  { icon: "/images/icons/compass.png", label: "Βαθμός Δυσκολίας", value: trail.difficulty },
+  { icon: "/images/icons/terrain.png", label: "Έδαφος", value: trail.terrain },
+  { icon: "/images/icons/length.png", label: "Μήκος", value: trail.length },
+  { icon: "/images/icons/ascent.png", label: "Ανάβαση", value: trail.ascent },
+  { icon: "/images/icons/signpost-1.png", label: "Υψηλότερο Σημείο", value: trail.highestPoint },
+  { icon: "/images/icons/duration.png", label: "Διάρκεια", value: trail.duration },
+  { icon: "/images/icons/woods.png", label: "Περίοδος Υλοποίησης", value: trail.season },
+  ...(trail.shade
+    ? [{ icon: "/images/icons/difficulty.png", label: "Σημεία Σκίασης", value: trail.shade }]
+    : []),
+];
+---
+
+<ul class="stats">
+  {stats.map((s) => (
+    <li class="stat">
+      <img class="stat__icon" src={s.icon} alt="" width="41" height="37" loading="lazy" />
+      <span class="stat__label">{s.label}</span>
+      <span class="stat__value">{s.value}</span>
+    </li>
+  ))}
+</ul>
+
+<style>
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 16px 10px;
+    text-align: center;
+    background: var(--c-wild-sand);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+  }
+
+  /* Fixed icon slot: every icon occupies the same box regardless of aspect ratio. */
+  .stat__icon {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+    flex: none;
+  }
+
+  /* Fixed label slot: two lines tall, so the value always starts at the same height. */
+  .stat__label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(2 * 1.35em);
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: var(--c-dove-gray);
+  }
+
+  /* Fixed value slot: starts right below the label slot, same height in every card. */
+  .stat__value {
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--c-daintree);
+  }
+
+  @media (max-width: 900px) {
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+</style>

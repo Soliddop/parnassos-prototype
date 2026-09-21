@@ -1,0 +1,306 @@
+---
+import { CONTACT, type Trail } from "../data/trails";
+import BookingCalendar from "./BookingCalendar.astro";
+
+interface Props { trail: Trail }
+const { trail } = Astro.props;
+
+// Split "25€/άτομο (ανήλικοι 15€)" into the headline figure and the rest.
+const match = trail.price.match(/^([\d.,]+€|Δωρεάν)\s*\/?\s*(.*)$/);
+const amount = match ? match[1] : trail.price;
+const per = match && match[2] ? match[2].replace(/^άτομο/, "ανά άτομο") : "";
+
+const bookHref = `/epikoinonia?trail=${trail.slug}`;
+---
+
+<aside class="booking" aria-label="Κράτηση διαδρομής">
+  <div class="booking__head">
+    <p class="booking__price">{amount}</p>
+    {per && <p class="booking__per">{per}</p>}
+  </div>
+
+  <div class="booking__body" data-cal-root>
+    <BookingCalendar trail={trail} />
+
+    <a
+      class="btn btn--primary booking__cta is-disabled"
+      href={bookHref}
+      data-book
+      data-base-href={bookHref}
+      aria-disabled="true"
+      aria-describedby={`book-hint-${trail.slug}`}
+    >
+      Κάντε κράτηση
+    </a>
+    <p class="booking__hint" id={`book-hint-${trail.slug}`} data-cal-hint>
+      Επιλέξτε πρώτα ημερομηνία και ώρα αναχώρησης.
+    </p>
+    <a class="btn btn--ghost booking__cta" href={`mailto:${CONTACT.email}?subject=${encodeURIComponent(trail.title)}`}>
+      Ρωτήστε μας για την διαδρομή
+    </a>
+  </div>
+</aside>
+
+<!-- Compact fallback bar: appears once the card above has scrolled out of view. -->
+<div class="dock" data-dock aria-hidden="true" inert>
+  <div class="shell dock__inner">
+    <div class="dock__info">
+      <p class="dock__title">{trail.title}</p>
+      <p class="dock__meta"><span data-dock-meta>{[trail.duration, trail.difficulty && `Δυσκολία ${trail.difficulty}`].filter(Boolean).join(" · ")}</span><span class="dock__party" data-dock-party></span></p>
+    </div>
+    <div class="dock__money">
+      <p class="dock__price" data-dock-price>{amount}</p>
+      <p class="dock__note" data-dock-note>{per || "ανά άτομο"}</p>
+    </div>
+    <a
+      class="btn btn--primary dock__cta is-disabled"
+      href={bookHref}
+      data-book
+      data-base-href={bookHref}
+      aria-disabled="true"
+    >
+      Κάντε κράτηση
+    </a>
+  </div>
+</div>
+
+<style>
+  .booking {
+    position: sticky;
+    top: 24px;
+    /* The card can still outgrow a short window. Capping it to the visible
+       height and scrolling inside keeps the booking button reachable while the
+       card is pinned, instead of leaving it below the fold. */
+    max-height: calc(100vh - 48px);
+    border-radius: var(--radius-lg);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--c-white);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--c-border);
+  }
+
+  .booking__head {
+    background: var(--c-daintree);
+    color: var(--c-white);
+    text-align: center;
+    padding: 16px;
+  }
+
+  .booking__price {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .booking__per {
+    margin: 4px 0 0;
+    font-size: 0.8125rem;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .booking__body { padding: 20px; }
+
+  .booking__cta { width: 100%; margin-bottom: 8px; }
+
+  /* The sidebar is 270px wide and this label is the longest on the page. At the
+     default 16px it needs 288px and wraps, so it gets a slightly smaller type
+     size and tighter side padding to hold one line. */
+  .booking__cta.btn--ghost {
+    font-size: 0.9375rem;
+    padding-inline: 12px;
+    white-space: nowrap;
+  }
+
+  .booking__hint {
+    margin: -4px 0 12px;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: var(--c-dove-gray);
+  }
+
+  .booking__hint[hidden] { display: none; }
+
+  @media (max-width: 1024px) {
+    .booking {
+      position: static;
+      max-height: none;
+      /* Back to plain clipping: the rounded corners must still cut the dark
+         head, and a phone must never get a scroll area inside the card. */
+      overflow: hidden;
+    }
+  }
+
+  /* ---- sticky booking dock ---- */
+
+  .dock {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 50;
+    background: var(--c-white);
+    border-top: 1px solid var(--c-border);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.1);
+    transform: translateY(110%);
+    transition: transform 0.25s ease;
+  }
+
+  .dock.is-visible { transform: translateY(0); }
+
+  /* On desktop the sidebar card is sticky and always in view, so the bottom
+     dock is redundant. It only serves the layouts where the card scrolls away. */
+  @media (min-width: 1025px) {
+    .dock { display: none; }
+  }
+
+  .dock__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-block: 12px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .dock__info { min-width: 0; flex: 1; }
+
+  .dock__title {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--c-daintree);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dock__meta {
+    margin: 3px 0 0;
+    font-size: 0.8125rem;
+    color: var(--c-dove-gray);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dock__money {
+    flex: 0 0 auto;
+    text-align: right;
+    padding-inline: 4px;
+  }
+
+  .dock__price {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--c-daintree);
+    white-space: nowrap;
+  }
+
+  .dock__note {
+    margin: 2px 0 0;
+    font-size: 0.6875rem;
+    color: var(--c-dove-gray);
+    white-space: nowrap;
+  }
+
+  .dock__cta {
+    flex: 0 0 auto;
+    padding-inline: 28px;
+  }
+
+  /* Below 700px the dock stays one row: the button keeps the right edge and the
+     summary stacks its two text lines beside it, instead of pushing the button
+     onto a second row. The trail name goes — the visitor is on its page. */
+  @media (max-width: 700px) {
+    .dock__inner {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "money cta"
+        "info  cta";
+      align-items: center;
+      column-gap: 12px;
+      row-gap: 2px;
+      padding-block: 10px;
+    }
+
+    .dock__title { display: none; }
+
+    .dock__info { grid-area: info; min-width: 0; }
+
+    .dock__money {
+      grid-area: money;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      min-width: 0;
+      text-align: left;
+      padding-inline: 0;
+    }
+
+    .dock__price { font-size: 1.125rem; }
+
+    .dock__note {
+      font-size: 0.75rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .dock__meta { margin-top: 0; font-size: 0.75rem; }
+
+    /* The party size is the first thing to drop when the line is this narrow:
+       the card above still states it, and the date must stay readable. */
+    .dock__party { display: none; }
+
+    /* A narrower button buys the summary line the width it needs. */
+    .dock__cta {
+      grid-area: cta;
+      align-self: center;
+      padding-inline: 14px;
+      font-size: 0.9375rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dock { transition: none; }
+  }
+</style>
+
+<script>
+  import { initBookingCalendar } from "../lib/booking/calendar";
+
+  document
+    .querySelectorAll<HTMLElement>("[data-cal-root]")
+    .forEach((root) => initBookingCalendar(root));
+
+  // Reveal the dock only once the booking card has scrolled off the top.
+  const card = document.querySelector(".booking");
+  const dock = document.querySelector<HTMLElement>("[data-dock]");
+  // Matches the CSS breakpoint above: no dock while the sidebar stays sticky.
+  const dockApplies = window.matchMedia("(max-width: 1024px)");
+
+  if (card && dock) {
+    const setVisible = (visible: boolean) => {
+      dock.classList.toggle("is-visible", visible);
+      dock.setAttribute("aria-hidden", String(!visible));
+      if (visible) dock.removeAttribute("inert");
+      else dock.setAttribute("inert", "");
+    };
+
+    new IntersectionObserver(
+      ([entry]) =>
+        setVisible(
+          dockApplies.matches && !entry.isIntersecting && entry.boundingClientRect.top < 0,
+        ),
+      { threshold: 0 },
+    ).observe(card);
+
+    dockApplies.addEventListener("change", (event) => {
+      if (!event.matches) setVisible(false);
+    });
+  }
+</script>
